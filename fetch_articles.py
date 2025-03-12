@@ -6,10 +6,12 @@ import asyncio
 import os
 
 
-async def getHCISite(email, password):
+async def get_hci_site(email, password):
+    news_dict = {}
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False)
+        browser = await p.chromium.launch_persistent_context("data/", headless=False)
         page = await browser.new_page()
+        """
         await page.goto(
             "https://accounts.google.com/signin/v2/identifier?hl=en&flowName=GlifWebSignIn&flowEntry=ServiceLogin"
         )
@@ -17,12 +19,42 @@ async def getHCISite(email, password):
         await page.get_by_role("button", name="Next").click()
         await page.get_by_label("Enter your password").fill(password)
         await page.get_by_role("button", name="Next").click()
-        time.sleep(10)  # Time to complete 2FA if enabled
-        await page.goto("https://sites.google.com/hci.edu.sg/c1gp2025?pli=1&authuser=3")
+        # time.sleep(30)  # Time to complete 2FA if enabled
+        """
+        await page.goto(
+            url="https://sites.google.com/hci.edu.sg/c1gp2025?pli=1&authuser=3"
+        )
         # find links in page content
+        topics = []
+        cards = await page.query_selector_all(".XqQF9c")
+
+        time.sleep(5)
+        for c in cards:
+
+            print(c)
+            link = await c.get_attribute("href")
+
+            topics.append(link)
+            topic = topics[0]
+
+            # just use first topic to test: should be man and the env
+            # can prompt the user for which topic they want to extract data from
+            await page.goto(url=topic)
+            subtopics = await page.query_selector_all("aJHbb")
+            st_links = []
+            for st in subtopics:
+                if st.inner_text != "Task":
+                    st_link = await st.get_attribute("href")
+                    # loop through all subtopics and get links from each one
+                    st_links.append(st_link)
+                    for st_l in st_links:
+                        await page.goto(url=st_l)
+                        article_links = await page.query_selector_all(".XqQF9c")
+                        for article_link in article_links:
+                            print(await article_link.get_attribute("href"))
 
 
-def fetch_google_news():
+def get_google_news():
     google_news = GNews(max_results=10)
     news_dict = {}
     sg_news = google_news.get_news("Singapore")
@@ -31,7 +63,7 @@ def fetch_google_news():
     return news_dict
 
 
-async def getNJCReader():
+async def get_njc_reader():
     news_dict = {}
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -46,4 +78,4 @@ async def getNJCReader():
         return news_dict
 
 
-# asyncio.run(getHCISite(os.environ.get("HCI_EMAIL"), os.environ.get("HCI_PASSWORD")))
+asyncio.run(get_hci_site(os.environ.get("HCI_EMAIL"), os.environ.get("HCI_PASSWORD")))

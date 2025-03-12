@@ -5,7 +5,7 @@ import json
 import os
 import subprocess
 from sentence_transformers import SentenceTransformer
-from fetch_articles import getHCISite, getNJCReader, fetch_google_news
+from fetch_articles import get_google_news, get_hci_site, get_njc_reader
 import asyncio
 from pyfiglet import Figlet
 
@@ -62,6 +62,7 @@ def scrape_and_store(url):
             pass
     else:
         # Upload essay instead of article
+
         # Add to FAISS and article list
         index.add(np.array([embedding], dtype=np.float32))
         article_data["articles"].append({"url": url, "text": text})
@@ -72,7 +73,6 @@ def scrape_and_store(url):
         print(f"✅ Stored article from {url}")
 
 
-# Query Function
 def answer_question(question):
     if not article_data["articles"]:
         return "❌ No articles stored yet."
@@ -84,6 +84,7 @@ def answer_question(question):
         for i in nearest[0]
         if i < len(article_data["articles"])
     ]
+    # nearest[0] returns the closest n articles
 
     if not retrieved_articles:
         return "❌ No relevant articles found."
@@ -91,7 +92,7 @@ def answer_question(question):
     context = "\n\n".join(retrieved_articles)
     prompt = f"""
     You are an AI assistant tasked with answering the following question using the provided news articles. You may include external knowledge but not speculation or invented facts.
-    If you cannot answer, just say that you are do not know instead of giving false information.
+    If you cannot answer, just say that you do not know instead of giving false information.
     ### Articles:
     {context}
 
@@ -111,7 +112,7 @@ def answer_question(question):
 
 async def main():
     # print("Scraping articles from Google News...")
-    # news_dict = fetch_google_news()
+    # news_dict = getGoogleNews()
 
     # for url in news_dict.values():
     #    scrape_and_store(url)
