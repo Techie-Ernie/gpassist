@@ -46,11 +46,6 @@ def clear_existing_data():
         f.write('{"articles": []}')
 
 
-f = Figlet(font="slant")
-print(f.renderText("GPAssist"))
-load_faiss_index()
-
-
 def scrape_and_store(url):
     if url:
         if any(article["url"] == url for article in article_data["articles"]):
@@ -93,7 +88,7 @@ def answer_question(question):
         return "❌ No articles stored yet."
 
     q_embedding = embed_model.encode([question])[0].reshape(1, -1)
-    _, nearest = index.search(q_embedding, 5)
+    _, nearest = index.search(q_embedding, 3)
     retrieved_articles = [
         article_data["articles"][i]["text"]
         for i in nearest[0]
@@ -126,13 +121,26 @@ def answer_question(question):
 
 
 async def main():
-    # print("Scraping articles from Google News...")
-    # news_dict = getGoogleNews()
-
-    # for url in news_dict.values():
-    #    scrape_and_store(url)
+    f = Figlet(font="slant")
+    print(f.renderText("GPAssist"))
     news_dict = {}
-    news_dict = await get_hci_site()
+    select = int(
+        input(
+            "1. Get articles from Google News \n2. Get articles from The NJC Reader \n3. Get articles from HCI GP microsite \n4. Clear current database of articles\n\n"
+        )
+    )
+    match (select):
+        case 1:
+            print("Scraping articles from Google News...")
+            news_dict = get_google_news()
+        case 2:
+            news_dict = await get_njc_reader()
+        case 3:
+            news_dict = await get_hci_site()
+        case 4:
+            clear_existing_data()
+    load_faiss_index()
+
     for url in news_dict.values():
         scrape_and_store(url)
 

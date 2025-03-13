@@ -36,10 +36,13 @@ async def get_hci_site():
         for c in cards:
             link = await c.get_attribute("href")
             topics.append(link)
+        print("Available topics: ")
+
         for x in range(3, len(topics)):
             print(f"{x-2}: {topics[x].split('/')[-1]}")
         # validate input
         topic_number = input("Topic number: ")
+
         topic = topics[
             int(topic_number) + 2
         ]  # just use first topic to test: should be man and the env
@@ -79,11 +82,15 @@ async def get_njc_reader():
     async with async_playwright() as p:
         browser = await p.chromium.launch()
         page = await browser.new_page()
-        await page.goto("https://the-njc-reader.vercel.app/")
-        cards = await page.locator(".card-title").all()
-        for card in cards:
-            news_link = await card.get_by_role("link").get_attribute("href")
-            news_title = await card.get_by_role("link").inner_text()
-            news_dict[news_title] = news_link
+        num_pages = int(input("Enter number of pages: "))
+        for i in range(1, num_pages + 1):
+            print(i)
+            await page.goto(f"https://the-njc-reader.vercel.app/articles/{i}")
+            cards = await page.locator(".card-title").all()
+            for card in cards:
+                news_link = await card.get_by_role("link").get_attribute("href")
+                news_title = await card.get_by_role("link").inner_text()
+                news_dict[news_title] = news_link
+
         await browser.close()
         return news_dict
