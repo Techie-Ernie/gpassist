@@ -84,7 +84,6 @@ async def get_njc_reader():
         page = await browser.new_page()
         num_pages = int(input("Enter number of pages: "))
         for i in range(1, num_pages + 1):
-            print(i)
             await page.goto(f"https://the-njc-reader.vercel.app/articles/{i}")
             cards = await page.locator(".card-title").all()
             for card in cards:
