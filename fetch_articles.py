@@ -6,7 +6,7 @@ import asyncio
 import os
 
 
-async def get_hci_site(email, password):
+async def get_hci_site():
     news_dict = {}
     async with async_playwright() as p:
         browser = await p.chromium.launch_persistent_context("data/", headless=False)
@@ -28,30 +28,31 @@ async def get_hci_site(email, password):
         topics = []
         cards = await page.query_selector_all(".XqQF9c")
 
-        time.sleep(5)
+        # time.sleep(2)
+
         for c in cards:
-
-            print(c)
             link = await c.get_attribute("href")
-
             topics.append(link)
-            topic = topics[0]
+        topic = topics[3]  # just use first topic to test: should be man and the env
+        # can prompt the user for which topic they want to extract data from
+        await page.goto(url=topic)
+        subtopics = await page.query_selector_all(".aJHbb")
 
-            # just use first topic to test: should be man and the env
-            # can prompt the user for which topic they want to extract data from
-            await page.goto(url=topic)
-            subtopics = await page.query_selector_all("aJHbb")
-            st_links = []
-            for st in subtopics:
-                if st.inner_text != "Task":
-                    st_link = await st.get_attribute("href")
-                    # loop through all subtopics and get links from each one
+        st_links = []
+        for st in subtopics:
+            if st.inner_text != "Task":
+                st_link = await st.get_attribute("href")
+                # print(st_link)
+                if st_link and "task" not in st_link and st_link not in st_links:
                     st_links.append(st_link)
-                    for st_l in st_links:
-                        await page.goto(url=st_l)
-                        article_links = await page.query_selector_all(".XqQF9c")
-                        for article_link in article_links:
-                            print(await article_link.get_attribute("href"))
+
+        for st_l in st_links:
+            await page.goto(url=f"https://sites.google.com{st_l}")
+            article_links = await page.query_selector_all(".XqQF9c")
+            for article_link in article_links:
+                link = await article_link.get_attribute("href")
+                news_dict[link] = link
+        return news_dict
 
 
 def get_google_news():
@@ -76,6 +77,3 @@ async def get_njc_reader():
             news_dict[news_title] = news_link
         await browser.close()
         return news_dict
-
-
-asyncio.run(get_hci_site(os.environ.get("HCI_EMAIL"), os.environ.get("HCI_PASSWORD")))

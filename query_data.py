@@ -58,7 +58,8 @@ def scrape_and_store(url):
             with open(ARTICLE_DB_PATH, "w", encoding="utf-8") as f:
                 json.dump(article_data, f, indent=4)
             print(f"✅ Stored article from {url}")
-        except newspaper.ArticleException:
+        except newspaper.ArticleException as error:
+            print("An exception occured: ", error)
             pass
     else:
         # Upload essay instead of article
@@ -116,8 +117,16 @@ async def main():
 
     # for url in news_dict.values():
     #    scrape_and_store(url)
+    news_dict = {}
+    news_dict = await get_hci_site()
+    for url in news_dict.values():
+        scrape_and_store(url)
+
     while True:
         print(answer_question(input("Question: ")))
 
 
-asyncio.run(main())
+# asyncio.run(main())
+
+if __name__ == "__main__":
+    asyncio.run(main())
