@@ -34,6 +34,18 @@ def load_faiss_index():
         index = faiss.read_index(FAISS_INDEX_PATH)
 
 
+def clear_existing_data():
+    if os.path.exists(FAISS_INDEX_PATH):
+        f = open(FAISS_INDEX_PATH, "r+")
+        f.seek(0)
+        f.truncate()
+    if os.path.exists(ARTICLE_DB_PATH):
+        f = open(ARTICLE_DB_PATH, "r+")
+        f.seek(0)
+        f.truncate()
+        f.write('{"articles": []}')
+
+
 f = Figlet(font="slant")
 print(f.renderText("GPAssist"))
 load_faiss_index()
@@ -42,22 +54,24 @@ load_faiss_index()
 def scrape_and_store(url):
     if url:
         if any(article["url"] == url for article in article_data["articles"]):
-            print(f"⚠️ Article from {url} already stored.")
+            print(f"⚠️   Article from {url} already stored.")
             return
         try:
             article = newspaper.Article(url)
             article.download()
             article.parse()
             text = article.text
+
             embedding = embed_model.encode([text])[0]
-            # Add to FAISS and article list
-            index.add(np.array([embedding], dtype=np.float32))
-            article_data["articles"].append({"url": url, "text": text})
-            # Save FAISS index and article database
-            faiss.write_index(index, FAISS_INDEX_PATH)
-            with open(ARTICLE_DB_PATH, "w", encoding="utf-8") as f:
-                json.dump(article_data, f, indent=4)
-            print(f"✅ Stored article from {url}")
+            if embedding.any():
+                # Add to FAISS and article list
+                index.add(np.array([embedding], dtype=np.float32))
+                article_data["articles"].append({"url": url, "text": text})
+                # Save FAISS index and article database
+                faiss.write_index(index, FAISS_INDEX_PATH)
+                with open(ARTICLE_DB_PATH, "w", encoding="utf-8") as f:
+                    json.dump(article_data, f, indent=4)
+                print(f"✅ Stored article from {url}")
         except newspaper.ArticleException as error:
             print("An exception occured: ", error)
             pass
@@ -79,7 +93,7 @@ def answer_question(question):
         return "❌ No articles stored yet."
 
     q_embedding = embed_model.encode([question])[0].reshape(1, -1)
-    _, nearest = index.search(q_embedding, 2)
+    _, nearest = index.search(q_embedding, 5)
     retrieved_articles = [
         article_data["articles"][i]["text"]
         for i in nearest[0]
@@ -126,7 +140,6 @@ async def main():
         print(answer_question(input("Question: ")))
 
 
-# asyncio.run(main())
-
 if __name__ == "__main__":
+    # clear_existing_data()
     asyncio.run(main())

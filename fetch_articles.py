@@ -2,16 +2,12 @@ from gnews import GNews
 from playwright.async_api import async_playwright
 from googlenewsdecoder import gnewsdecoder
 import time
-import asyncio
-import os
 
 
-async def get_hci_site():
-    news_dict = {}
+async def login_hci(email, password):
     async with async_playwright() as p:
-        browser = await p.chromium.launch_persistent_context("data/", headless=False)
+        browser = await p.chromium.launch_persistent_context("data/", headless=True)
         page = await browser.new_page()
-        """
         await page.goto(
             "https://accounts.google.com/signin/v2/identifier?hl=en&flowName=GlifWebSignIn&flowEntry=ServiceLogin"
         )
@@ -19,8 +15,15 @@ async def get_hci_site():
         await page.get_by_role("button", name="Next").click()
         await page.get_by_label("Enter your password").fill(password)
         await page.get_by_role("button", name="Next").click()
-        # time.sleep(30)  # Time to complete 2FA if enabled
-        """
+        time.sleep(20)  # Time to complete 2FA if enabled
+
+
+async def get_hci_site():
+    news_dict = {}
+    async with async_playwright() as p:
+        browser = await p.chromium.launch_persistent_context("data/", headless=True)
+        page = await browser.new_page()
+
         await page.goto(
             url="https://sites.google.com/hci.edu.sg/c1gp2025?pli=1&authuser=3"
         )
@@ -33,7 +36,14 @@ async def get_hci_site():
         for c in cards:
             link = await c.get_attribute("href")
             topics.append(link)
-        topic = topics[3]  # just use first topic to test: should be man and the env
+        for x in range(3, len(topics)):
+            print(f"{x-2}: {topics[x].split('/')[-1]}")
+        # validate input
+        topic_number = input("Topic number: ")
+        topic = topics[
+            int(topic_number) + 2
+        ]  # just use first topic to test: should be man and the env
+        print(f"ℹ️  Topic: {topic.split('/')[-1]}")
         # can prompt the user for which topic they want to extract data from
         await page.goto(url=topic)
         subtopics = await page.query_selector_all(".aJHbb")
