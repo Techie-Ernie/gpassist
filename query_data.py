@@ -46,7 +46,7 @@ def clear_existing_data():
         f.write('{"articles": []}')
 
 
-def scrape_and_store(url):
+def scrape_and_store(url=None):
     if url:
         if any(article["url"] == url for article in article_data["articles"]):
             print(f"⚠️   Article from {url} already stored.")
@@ -72,15 +72,17 @@ def scrape_and_store(url):
             pass
     else:
         # Upload essay instead of article
-
-        # Add to FAISS and article list
-        index.add(np.array([embedding], dtype=np.float32))
-        article_data["articles"].append({"url": url, "text": text})
-        # Save FAISS index and article database
-        faiss.write_index(index, FAISS_INDEX_PATH)
-        with open(ARTICLE_DB_PATH, "w", encoding="utf-8") as f:
-            json.dump(article_data, f, indent=4)
-        print(f"✅ Stored article from {url}")
+        essay_text = input("Paste essay text: \n")
+        embedding = embed_model.encode([essay_text])[0]
+        if embedding.any():
+            # Add to FAISS and article list
+            index.add(np.array([embedding], dtype=np.float32))
+            article_data["articles"].append({"url": "", "text": essay_text})
+            # Save FAISS index and article database
+            faiss.write_index(index, FAISS_INDEX_PATH)
+            with open(ARTICLE_DB_PATH, "w", encoding="utf-8") as f:
+                json.dump(article_data, f, indent=4)
+            print("✅ Stored essay")
 
 
 def answer_question(question):
@@ -101,9 +103,9 @@ def answer_question(question):
 
     context = "\n\n".join(retrieved_articles)
     prompt = f"""
-    You are an AI assistant tasked with answering the following question using the provided news articles. You may include external knowledge but not speculation or invented facts.
-    If you cannot answer, just say that you do not know instead of giving false information.
-    ### Articles:
+    You are an AI assistant tasked with answering the following question using the provided information. You may include external knowledge but do not speculate or invent facts.
+    If you cannot answer, just say that you do not know instead of giving false information. If given a question that asks for your opinion, give a clear stand and explain your stand using the information you have been provided.
+    ### Information:
     {context}
 
 
@@ -126,7 +128,7 @@ async def main():
     news_dict = {}
     select = int(
         input(
-            "1. Get articles from Google News \n2. Get articles from The NJC Reader \n3. Get articles from HCI GP microsite \n4. Clear current database of articles\n\n"
+            "1. Get articles from Google News \n2. Get articles from The NJC Reader \n3. Get articles from HCI GP microsite \n4. Paste an essay\n5. Clear current database of articles\n\n"
         )
     )
     match (select):
@@ -137,7 +139,13 @@ async def main():
             news_dict = await get_njc_reader()
         case 3:
             news_dict = await get_hci_site()
+
         case 4:
+            scrape_and_store()
+            load_faiss_index()
+            while True:
+                print(answer_question(input("Question: ")))
+        case 5:
             clear_existing_data()
     load_faiss_index()
 
