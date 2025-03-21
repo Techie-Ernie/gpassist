@@ -8,15 +8,26 @@ from sentence_transformers import SentenceTransformer
 from fetch_articles import get_google_news, get_hci_site, get_njc_reader
 import asyncio
 from pyfiglet import Figlet
+import re
 
+# Google API
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 embed_model = SentenceTransformer("all-MiniLM-L6-v2")
 
 ARTICLE_DB_PATH = "articles.json"
 FAISS_INDEX_PATH = "faiss_index.bin"
 
+# If modifying these scopes, delete the file token.json.
+SCOPES = ["https://www.googleapis.com/auth/documents.readonly"]
+
 embedding_dim = 384  # MiniLM-L6-v2 output size
 index = faiss.IndexFlatL2(embedding_dim)
+
 
 # Load or create the article database
 if os.path.exists(ARTICLE_DB_PATH):
@@ -46,31 +57,32 @@ def clear_existing_data():
         f.write('{"articles": []}')
 
 
-def scrape_and_store(url=None):
-    if url:
-        if any(article["url"] == url for article in article_data["articles"]):
-            print(f"⚠️   Article from {url} already stored.")
-            return
-        try:
-            article = newspaper.Article(url)
-            article.download()
-            article.parse()
-            text = article.text
+def scrape_and_store(mode, url=None):
+    if mode == "article":
+        if url:
+            if any(article["url"] == url for article in article_data["articles"]):
+                print(f"⚠️   Article from {url} already stored.")
+                return
+            try:
+                article = newspaper.Article(url)
+                article.download()
+                article.parse()
+                text = article.text
 
-            embedding = embed_model.encode([text])[0]
-            if embedding.any():
-                # Add to FAISS and article list
-                index.add(np.array([embedding], dtype=np.float32))
-                article_data["articles"].append({"url": url, "text": text})
-                # Save FAISS index and article database
-                faiss.write_index(index, FAISS_INDEX_PATH)
-                with open(ARTICLE_DB_PATH, "w", encoding="utf-8") as f:
-                    json.dump(article_data, f, indent=4)
-                print(f"✅ Stored article from {url}")
-        except newspaper.ArticleException as error:
-            print("An exception occured: ", error)
-            pass
-    else:
+                embedding = embed_model.encode([text])[0]
+                if embedding.any():
+                    # Add to FAISS and article list
+                    index.add(np.array([embedding], dtype=np.float32))
+                    article_data["articles"].append({"url": url, "text": text})
+                    # Save FAISS index and article database
+                    faiss.write_index(index, FAISS_INDEX_PATH)
+                    with open(ARTICLE_DB_PATH, "w", encoding="utf-8") as f:
+                        json.dump(article_data, f, indent=4)
+                    print(f"✅ Stored article from {url}")
+            except newspaper.ArticleException as error:
+                print("An exception occured: ", error)
+                pass
+    elif mode == "essay":
         # Upload essay instead of article
         essay_text = input("Paste essay text: \n")
         embedding = embed_model.encode([essay_text])[0]
@@ -83,6 +95,12 @@ def scrape_and_store(url=None):
             with open(ARTICLE_DB_PATH, "w", encoding="utf-8") as f:
                 json.dump(article_data, f, indent=4)
             print("✅ Stored essay")
+    elif mode == "docs":
+        # grab info from docs
+        # Google Docs
+        if url:
+            documentID = re.findall("/document/d/([a-zA-Z0-9-_]+)", url)[0]
+            print(documentID)
 
 
 def answer_question(question):
@@ -123,34 +141,69 @@ def answer_question(question):
 
 
 async def main():
+    mode = None
     f = Figlet(font="slant")
     print(f.renderText("GPAssist"))
     news_dict = {}
     select = int(
         input(
-            "1. Get articles from Google News \n2. Get articles from The NJC Reader \n3. Get articles from HCI GP microsite \n4. Paste an essay\n5. Clear current database of articles\n\n"
+            "1. Get articles from Google News \n2. Get articles from The NJC Reader \n3. Get articles from HCI GP microsite \n4. Paste an essay\n5. Import from Google Docs\n6. Clear current database of articles\n\n"
         )
     )
     match (select):
         case 1:
+            mode = "article"
             print("Scraping articles from Google News...")
             news_dict = get_google_news()
         case 2:
+            mode = "article"
             news_dict = await get_njc_reader()
         case 3:
+            mode = "article"
             news_dict = await get_hci_site()
 
         case 4:
-            scrape_and_store()
+            mode = "essay"
+            scrape_and_store(mode)
             load_faiss_index()
             while True:
                 print(answer_question(input("Question: ")))
         case 5:
+            mode = "docs"
+            if os.path.exists("token.json"):
+                creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+            # If there are no (valid) credentials available, let the user log in.
+            if not creds or not creds.valid:
+                if creds and creds.expired and creds.refresh_token:
+                    creds.refresh(Request())
+                else:
+                    flow = InstalledAppFlow.from_client_secrets_file(
+                        "credentials.json", SCOPES
+                    )
+                    creds = flow.run_local_server(port=0)
+                # Save the credentials for the next run
+                with open("token.json", "w") as token:
+                    token.write(creds.to_json())
+
+            try:
+                service = build("docs", "v1", credentials=creds)
+
+                # Retrieve the documents contents from the Docs service.
+                document = (
+                    service.documents()
+                    .get(documentId="195j9eDD3ccgjQRttHhJPymLJUCOUjs-jmwTrekvdjFE")
+                    .execute()
+                )
+
+                print(f"The title of the document is: {document.get('title')}")
+            except HttpError as err:
+                print(err)
+        case 6:
             clear_existing_data()
     load_faiss_index()
 
     for url in news_dict.values():
-        scrape_and_store(url)
+        scrape_and_store(mode, url)
 
     while True:
         print(answer_question(input("Question: ")))
