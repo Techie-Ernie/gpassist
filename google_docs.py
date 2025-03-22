@@ -35,7 +35,6 @@ def get_doc_content(url):
 
         try:
             service = build("docs", "v1", credentials=creds)
-
             # Retrieve the documents contents from the Docs service.
             document = service.documents().get(documentId=documentID).execute()
             print(f"The title of the document is: {document.get('title')}")
@@ -60,81 +59,7 @@ def get_doc_content(url):
                                         if "textRun" in run:
                                             text += run["textRun"]["content"]
 
-            print(text)
+            return text
 
         except HttpError as err:
             print(err)
-
-
-def add_current_and_child_tabs(tab, all_tabs):
-    """Adds the provided tab to the list of all tabs, and recurses through and
-    adds all child tabs.
-
-    Args:
-        tab: a Tab from a Google Doc.
-        all_tabs: a list of all tabs in the document.
-    """
-    all_tabs.append(tab)
-    for tab in tab.get("childTabs"):
-        add_current_and_child_tabs(tab, all_tabs)
-
-
-def get_all_tabs(doc):
-    """Returns a flat list of all tabs in the document in the order they would
-    appear in the UI (top-down ordering). Includes all child tabs.
-
-    Args:
-        doc: a document.
-    """
-    all_tabs = []
-    # Iterate over all tabs and recursively add any child tabs to generate a
-    # flat list of Tabs.
-    for tab in doc.get("tabs"):
-        add_current_and_child_tabs(tab, all_tabs)
-    return all_tabs
-
-
-def read_paragraph_element(element):
-    """Returns the text in the given ParagraphElement.
-
-    Args:
-        element: a ParagraphElement from a Google Doc.
-    """
-    text_run = element.get("textRun")
-    if not text_run:
-        return ""
-    return text_run.get("content")
-
-
-def read_structural_elements(elements):
-    """Recurses through a list of Structural Elements to read a document's text
-    where text may be in nested elements.
-
-    Args:
-        elements: a list of Structural Elements.
-    """
-    text = ""
-    for value in elements:
-        if "paragraph" in value:
-            elements = value.get("paragraph").get("elements")
-            for elem in elements:
-                text += read_paragraph_element(elem)
-        elif "table" in value:
-            # The text in table cells are in nested Structural Elements and tables may
-            # be nested.
-            table = value.get("table")
-            for row in table.get("tableRows"):
-                cells = row.get("tableCells")
-                for cell in cells:
-                    text += read_structural_elements(cell.get("content"))
-        elif "tableOfContents" in value:
-            # The text in the TOC is also in a Structural Element.
-            toc = value.get("tableOfContents")
-            text += read_structural_elements(toc.get("content"))
-    return text
-
-
-if __name__ == "__main__":
-    get_doc_content(
-        "https://docs.google.com/document/d/1cg7nsqEYdqf9OlXOBOl59xYwXy_5r54Z1_62uXMxOSA/edit?tab=t.0"
-    )
