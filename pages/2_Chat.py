@@ -1,5 +1,4 @@
 import streamlit as st
-import random
 import time
 from query_data import answer_question, load_faiss_index
 

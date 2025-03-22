@@ -19,7 +19,6 @@ FAISS_INDEX_PATH = "faiss_index.bin"
 embedding_dim = 384  # MiniLM-L6-v2 output size
 index = faiss.IndexFlatL2(embedding_dim)
 
-
 # Load or create the article database
 if os.path.exists(ARTICLE_DB_PATH):
     with open(ARTICLE_DB_PATH, "r", encoding="utf-8") as f:
@@ -38,14 +37,14 @@ def load_faiss_index():
 
 def clear_existing_data():
     if os.path.exists(FAISS_INDEX_PATH):
-        f = open(FAISS_INDEX_PATH, "r+")
-        f.seek(0)
-        f.truncate()
+        f = open(FAISS_INDEX_PATH, "w")
+        f.write("")
+        f.close()
+
     if os.path.exists(ARTICLE_DB_PATH):
-        f = open(ARTICLE_DB_PATH, "r+")
-        f.seek(0)
-        f.truncate()
+        f = open(ARTICLE_DB_PATH, "w")
         f.write('{"articles": []}')
+        f.close()
 
 
 def scrape_and_store(mode, url=None):
@@ -85,6 +84,7 @@ def scrape_and_store(mode, url=None):
 
 
 def answer_question(question):
+    print("answering qn")
     if not article_data["articles"]:
         return "❌ No articles stored yet."
 
@@ -121,11 +121,11 @@ def answer_question(question):
     llama_cmd = ["ollama", "run", "llama3.2", prompt]
 
     response = subprocess.run(llama_cmd, capture_output=True, text=True)
-
-    return response.stdout.strip()
+    return response.stdout
 
 
 async def main():
+
     mode = None
     f = Figlet(font="slant")
     print(f.renderText("GPAssist"))
