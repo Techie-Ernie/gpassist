@@ -132,7 +132,7 @@ async def main():
     news_dict = {}
     select = int(
         input(
-            "1. Ask the chatbot\n 2. Get articles from Google News \n3. Get articles from The NJC Reader \n4. Get articles from HCI GP microsite \n5. Paste an essay\n6. Import from Google Docs\n7. Clear current database of articles\n\n"
+            "1. Ask the chatbot \n2. Get articles from Google News \n3. Get articles from The NJC Reader \n4. Get articles from HCI GP microsite \n5. Paste an essay\n6. Import from Google Docs\n7. Clear current database of articles\n\n"
         )
     )
     match (select):

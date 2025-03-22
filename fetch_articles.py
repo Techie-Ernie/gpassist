@@ -77,12 +77,12 @@ def get_google_news():
     return news_dict
 
 
-async def get_njc_reader():
+async def get_njc_reader(num_pages):
     news_dict = {}
     async with async_playwright() as p:
         browser = await p.chromium.launch()
         page = await browser.new_page()
-        num_pages = int(input("Enter number of pages: "))
+        # num_pages = int(input("Enter number of pages: "))
         for i in range(1, num_pages + 1):
             await page.goto(f"https://the-njc-reader.vercel.app/articles/{i}")
             cards = await page.locator(".card-title").all()
