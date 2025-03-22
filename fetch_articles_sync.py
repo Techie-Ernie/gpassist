@@ -18,8 +18,7 @@ def login_hci(email, password):
         time.sleep(20)  # Time to complete 2FA if enabled
 
 
-def get_hci_site():
-    news_dict = {}
+def get_hci_topics():
     with sync_playwright() as p:
         browser = p.chromium.launch_persistent_context("data/", headless=True)
         page = browser.new_page()
@@ -34,16 +33,20 @@ def get_hci_site():
         for c in cards:
             link = c.get_attribute("href")
             topics.append(link)
-        print("Available topics: ")
 
-        for x in range(3, len(topics)):
-            print(f"{x-2}: {topics[x].split('/')[-1]}")
-        # validate input
-        topic_number = input("Topic number: ")
+        return topics
 
-        topic = topics[
-            int(topic_number) + 2
-        ]  # just use first topic to test: should be man and the env
+
+def get_hci_site(topic_number, topics):
+    topic = topics[int(topic_number) + 2]
+
+    news_dict = {}
+    with sync_playwright() as p:
+        browser = p.chromium.launch_persistent_context("data/", headless=True)
+        page = browser.new_page()
+
+        page.goto(url="https://sites.google.com/hci.edu.sg/c1gp2025?pli=1&authuser=3")
+        # just use first topic to test: should be man and the env
         print(f"ℹ️  Topic: {topic.split('/')[-1]}")
         # can prompt the user for which topic they want to extract data from
         page.goto(url=topic)
