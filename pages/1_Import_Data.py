@@ -26,7 +26,8 @@ news_dict = {}
 
 match (selection):
     case "Google News":
-        news_dict = get_google_news()
+        with st.spinner("Please wait...", show_time=True):
+            news_dict = get_google_news()
         # st.write(news_dict)
     case "The NJC Reader":
         num_pages = st.text_input("Number of pages: ")
@@ -49,7 +50,7 @@ match (selection):
         if topic_number:
             print("getting news_dict")
             with st.spinner("Please wait...", show_time=True):
-                st.write(get_hci_site(int(topic_number), topics))
+                news_dict = get_hci_site(int(topic_number), topics)
             st.success("Done!")
     case "Import from Google Docs":
         doc_url = st.text_input("Google Docs URL: ")
@@ -59,6 +60,8 @@ match (selection):
         essay = st.text_input("Essay: ")
         if essay:
             scrape_and_store("essay")
+
+
 if len(news_dict) > 2:
     with st.spinner("Storing articles...", show_time=True):
         load_faiss_index()
