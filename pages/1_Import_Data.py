@@ -54,11 +54,15 @@ match (selection):
     case "Import from Google Docs":
         doc_url = st.text_input("Google Docs URL: ")
         if doc_url:
-            scrape_and_store("docs", doc_url)
+            with st.spinner("Please wait...", show_time=True):
+                scrape_and_store("docs", doc_url)
+            st.success("Done!")
     case "Paste your own essay":
         essay = st.text_input("Essay: ")
         if essay:
-            scrape_and_store("essay")
+            with st.spinner("Please wait...", show_time=True):
+                scrape_and_store("essay")
+            st.success("Done!")
 
 
 if len(news_dict) > 2:
