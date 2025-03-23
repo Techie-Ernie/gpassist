@@ -10,7 +10,6 @@ from query_data import scrape_and_store, load_faiss_index
 st.set_page_config(page_title="Import Data", page_icon="")
 
 st.markdown("# Import Data")
-st.sidebar.header("Import Data")
 selection = st.selectbox(
     "Options:",
     [
